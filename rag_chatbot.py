@@ -157,26 +157,26 @@ def process_documents(file_paths: List[str]) -> Optional[Chroma]:
     # Add metadata to each chunk
     for i, doc in enumerate(pages_split):
         doc.metadata.update({
-                'chunk_id': i,
-                'total_chunks': len(pages_split)
-            })
-        
-        # Create temporary vector store
-        temp_dir = tempfile.mkdtemp()
-        collection_name = f"study_docs_{uuid.uuid4().hex[:8]}"
-        
-        try:
-            vectorstore = Chroma.from_documents(
-                documents=pages_split,
-                embedding=embeddings,
-                persist_directory=temp_dir,
-                collection_name=collection_name
-            )
-            print(f"Created vector store with {len(pages_split)} chunks from {len(file_info)} files")
-            return vectorstore
-        except Exception as e:
-            print(f"Error creating vector store: {e}")
-            return None
+            'chunk_id': i,
+            'total_chunks': len(pages_split)
+        })
+    
+    # Create temporary vector store
+    temp_dir = tempfile.mkdtemp()
+    collection_name = f"study_docs_{uuid.uuid4().hex[:8]}"
+    
+    try:
+        vectorstore = Chroma.from_documents(
+            documents=pages_split,
+            embedding=embeddings,
+            persist_directory=temp_dir,
+            collection_name=collection_name
+        )
+        print(f"Created vector store with {len(pages_split)} chunks from {len(file_info)} files")
+        return vectorstore
+    except Exception as e:
+        print(f"Error creating vector store: {e}")
+        return None
 
 def create_retriever_tool(vectorstore: Chroma):
     """Create a retriever tool for the given vector store."""

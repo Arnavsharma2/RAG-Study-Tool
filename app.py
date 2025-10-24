@@ -155,12 +155,12 @@ def update_timer() -> Tuple[str, str, str]:
             # Break finished, start work
             pomodoro_state["is_break"] = False
             pomodoro_state["time_left"] = 25 * 60
-            pomodoro_state["sessions_completed"] += 1
             return "Break finished! Time to work.", "Work", f"Sessions completed: {pomodoro_state['sessions_completed']}"
         else:
             # Work finished, start break
             pomodoro_state["is_break"] = True
             pomodoro_state["time_left"] = 5 * 60
+            pomodoro_state["sessions_completed"] += 1
             return "Work session finished! Take a break.", "Break", f"Sessions completed: {pomodoro_state['sessions_completed']}"
 
 def get_wrong_answers() -> str:
