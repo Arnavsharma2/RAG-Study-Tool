@@ -55,29 +55,422 @@ def generate_quiz(num_questions: int, difficulty: str, question_types: List[str]
     
     Question types to include: {types_str}
     
-    Please create an interactive HTML quiz with:
-    1. Clean, modern styling (similar to Google Forms)
-    2. Question numbering
-    3. Interactive elements (radio buttons, checkboxes, text inputs)
-    4. Submit button
-    5. JavaScript for instant feedback
-    6. Score calculation
-    7. Review mode for wrong answers
+    Please provide ONLY the quiz content in the following JSON format:
+    {{
+        "title": "Quiz Title",
+        "questions": [
+            {{
+                "id": 1,
+                "type": "multiple_choice",
+                "question": "Question text here?",
+                "options": ["Option A", "Option B", "Option C", "Option D"],
+                "correct": 0,
+                "explanation": "Explanation of the correct answer"
+            }},
+            {{
+                "id": 2,
+                "type": "true_false",
+                "question": "True or false statement?",
+                "correct": true,
+                "explanation": "Explanation of the correct answer"
+            }},
+            {{
+                "id": 3,
+                "type": "short_answer",
+                "question": "Short answer question?",
+                "correct": "Expected answer",
+                "explanation": "Explanation of the correct answer"
+            }}
+        ]
+    }}
     
     Make sure questions are based only on the uploaded materials and test understanding, not just memorization.
+    Return ONLY the JSON, no other text.
     """
     
     try:
         from langchain_core.messages import HumanMessage
         result = quiz_agent.invoke({"messages": [HumanMessage(content=prompt)]})
-        quiz_html = result['messages'][-1].content
+        response_content = result['messages'][-1].content
+        
+        # Extract JSON from response
+        import re
+        json_match = re.search(r'\{.*\}', response_content, re.DOTALL)
+        if json_match:
+            quiz_data = json.loads(json_match.group())
+            quiz_html = create_quiz_html(quiz_data)
+        else:
+            # Fallback: try to extract HTML if JSON parsing fails
+            html_match = re.search(r'<div.*</div>', response_content, re.DOTALL)
+            if html_match:
+                quiz_html = html_match.group()
+            else:
+                quiz_html = f"<div class='quiz-container'><h2>Quiz Generation Error</h2><p>Could not parse quiz data. Raw response:</p><pre>{response_content}</pre></div>"
         
         # Clear previous wrong answers
         wrong_answers = []
         
         return quiz_html, "Quiz generated successfully! Answer the questions and get instant feedback."
     except Exception as e:
-        return f"Error generating quiz: {str(e)}", "Failed to generate quiz. Please try again."
+        return f"<div class='quiz-container'><h2>Error</h2><p>Failed to generate quiz: {str(e)}</p></div>", "Failed to generate quiz. Please try again."
+
+def create_quiz_html(quiz_data: dict) -> str:
+    """Create interactive HTML quiz from quiz data."""
+    html = f"""
+    <style>
+    .quiz-container {{
+        font-family: 'Google Sans', Arial, sans-serif !important;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        background: #ffffff !important;
+        color: #333333 !important;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }}
+    
+    .quiz-container h2 {{
+        color: #1976d2 !important;
+        text-align: center;
+        margin-bottom: 30px;
+        font-size: 28px;
+    }}
+    
+    .quiz-question {{
+        margin-bottom: 30px;
+        padding: 20px;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        background: #fafafa !important;
+        color: #333333 !important;
+    }}
+    
+    .quiz-question h3 {{
+        color: #1976d2 !important;
+        margin-bottom: 15px;
+        font-size: 18px;
+    }}
+    
+    .quiz-question p {{
+        color: #333333 !important;
+        margin-bottom: 15px;
+        font-size: 16px;
+        line-height: 1.5;
+    }}
+    
+    .quiz-options {{
+        margin: 15px 0;
+    }}
+    
+    .quiz-option {{
+        display: block !important;
+        margin: 10px 0;
+        padding: 12px 15px;
+        border: 2px solid #e0e0e0 !important;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.2s;
+        background: #ffffff !important;
+        color: #333333 !important;
+        font-size: 16px !important;
+        font-weight: normal !important;
+    }}
+    
+    .quiz-option:hover {{
+        background-color: #f0f8ff !important;
+        border-color: #1976d2 !important;
+    }}
+    
+    .quiz-option input[type="radio"] {{
+        margin-right: 10px;
+        accent-color: #1976d2;
+        width: 18px !important;
+        height: 18px !important;
+        background-color: #ffffff !important;
+        border: 2px solid #1976d2 !important;
+        border-radius: 50% !important;
+    }}
+    
+    .quiz-option input[type="radio"]:checked {{
+        background-color: #1976d2 !important;
+        border-color: #1976d2 !important;
+    }}
+    
+    .quiz-option input[type="radio"]:hover {{
+        border-color: #0d47a1 !important;
+    }}
+    
+    .quiz-option span {{
+        color: #333333 !important;
+        font-size: 16px !important;
+    }}
+    
+    .quiz-option.correct {{
+        background-color: #e8f5e8 !important;
+        border-color: #4caf50 !important;
+        color: #2e7d32 !important;
+    }}
+    
+    .quiz-option.correct span {{
+        color: #2e7d32 !important;
+    }}
+    
+    .quiz-option.wrong {{
+        background-color: #ffebee !important;
+        border-color: #f44336 !important;
+        color: #c62828 !important;
+    }}
+    
+    .quiz-option.wrong span {{
+        color: #c62828 !important;
+    }}
+    
+    .quiz-option input[type="text"] {{
+        width: 100%;
+        padding: 10px;
+        border: 2px solid #e0e0e0 !important;
+        border-radius: 4px;
+        font-size: 16px !important;
+        color: #333333 !important;
+        background: #ffffff !important;
+    }}
+    
+    .quiz-option input[type="text"]:focus {{
+        outline: none;
+        border-color: #1976d2 !important;
+    }}
+    
+    .quiz-option input[type="text"].correct {{
+        background-color: #e8f5e8 !important;
+        border-color: #4caf50 !important;
+    }}
+    
+    .quiz-option input[type="text"].wrong {{
+        background-color: #ffebee !important;
+        border-color: #f44336 !important;
+    }}
+    
+    .quiz-submit {{
+        background: #4caf50 !important;
+        color: white !important;
+        padding: 15px 30px;
+        border: none !important;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 18px !important;
+        font-weight: bold !important;
+        margin-top: 30px;
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+        transition: background-color 0.2s;
+    }}
+    
+    .quiz-submit:hover {{
+        background: #45a049 !important;
+    }}
+    
+    .quiz-submit:disabled {{
+        background: #cccccc !important;
+        cursor: not-allowed;
+    }}
+    
+    .quiz-results {{
+        margin-top: 30px;
+        padding: 20px;
+        background: #f5f5f5 !important;
+        border-radius: 8px;
+        color: #333333 !important;
+    }}
+    
+    .quiz-results h3 {{
+        color: #1976d2 !important;
+        margin-bottom: 15px;
+    }}
+    
+    .explanation {{
+        margin-top: 15px;
+        padding: 15px;
+        background: #e3f2fd !important;
+        border-radius: 6px;
+        color: #333333 !important;
+    }}
+    
+    .explanation p {{
+        margin: 0;
+        font-size: 14px;
+        color: #333333 !important;
+    }}
+    
+    .unanswered {{
+        border-color: #ff9800 !important;
+        background-color: #fff3e0 !important;
+    }}
+    </style>
+    
+    <div class="quiz-container">
+        <h2>{quiz_data.get('title', 'Generated Quiz')}</h2>
+        <form id="quiz-form">
+    """
+    
+    for question in quiz_data.get('questions', []):
+        q_id = question['id']
+        q_type = question['type']
+        q_text = question['question']
+        
+        html += f"""
+        <div class="quiz-question" data-question-id="{q_id}">
+            <h3>Question {q_id}</h3>
+            <p>{q_text}</p>
+        """
+        
+        if q_type == 'multiple_choice':
+            html += '<div class="quiz-options">'
+            for i, option in enumerate(question['options']):
+                html += f"""
+                <label class="quiz-option">
+                    <input type="radio" name="q{q_id}" value="{i}" data-correct="{i == question['correct']}">
+                    <span>{option}</span>
+                </label>
+                """
+            html += '</div>'
+            
+        elif q_type == 'true_false':
+            html += f"""
+            <div class="quiz-options">
+                <label class="quiz-option">
+                    <input type="radio" name="q{q_id}" value="true" data-correct="{question['correct']}">
+                    <span>True</span>
+                </label>
+                <label class="quiz-option">
+                    <input type="radio" name="q{q_id}" value="false" data-correct="{not question['correct']}">
+                    <span>False</span>
+                </label>
+            </div>
+            """
+            
+        elif q_type == 'short_answer':
+            html += f"""
+            <div class="quiz-options">
+                <input type="text" name="q{q_id}" placeholder="Your answer..." data-correct="{question['correct']}" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 4px; font-size: 16px; color: #333333; background: #ffffff;">
+            </div>
+            """
+        
+        html += f"""
+            <div class="explanation" style="display: none;">
+                <p><strong>Explanation:</strong> {question['explanation']}</p>
+            </div>
+        </div>
+        """
+    
+    html += """
+            <button type="button" class="quiz-submit" id="submit-btn">Submit Quiz</button>
+        </form>
+        <div id="quiz-results" class="quiz-results" style="display: none;">
+            <h3>Quiz Results</h3>
+            <p id="score-display"></p>
+            <button type="button" id="explain-btn">Show Explanations</button>
+        </div>
+    </div>
+    
+    <script>
+    // Define functions immediately
+    window.submitQuiz = function() {
+        alert('Submit button clicked!');
+        console.log('Submit quiz clicked!');
+        
+        const form = document.getElementById('quiz-form');
+        if (!form) {
+            alert('Quiz form not found!');
+            return;
+        }
+        
+        const questions = form.querySelectorAll('.quiz-question');
+        let correct = 0;
+        let total = questions.length;
+        
+        alert('Found ' + total + ' questions');
+        
+        questions.forEach(question => {
+            const inputs = question.querySelectorAll('input');
+            let answered = false;
+            
+            inputs.forEach(input => {
+                if (input.type === 'radio' && input.checked) {
+                    answered = true;
+                    if (input.dataset.correct === 'true') {
+                        correct++;
+                        input.parentElement.classList.add('correct');
+                    } else {
+                        input.parentElement.classList.add('wrong');
+                    }
+                } else if (input.type === 'text' && input.value.trim()) {
+                    answered = true;
+                    const userAnswer = input.value.trim().toLowerCase();
+                    const correctAnswer = input.dataset.correct.toLowerCase();
+                    if (userAnswer === correctAnswer) {
+                        correct++;
+                        input.classList.add('correct');
+                    } else {
+                        input.classList.add('wrong');
+                    }
+                }
+            });
+            
+            if (!answered) {
+                question.classList.add('unanswered');
+            }
+        });
+        
+        const score = Math.round((correct / total) * 100);
+        const scoreDisplay = document.getElementById('score-display');
+        const resultsDiv = document.getElementById('quiz-results');
+        
+        if (scoreDisplay) {
+            scoreDisplay.textContent = 'You scored ' + correct + '/' + total + ' (' + score + '%)';
+        }
+        if (resultsDiv) {
+            resultsDiv.style.display = 'block';
+        }
+        
+        alert('Score: ' + correct + '/' + total + ' (' + score + '%)');
+        
+        // Disable form
+        form.querySelectorAll('input, button').forEach(el => el.disabled = true);
+    };
+    
+    window.showExplanations = function() {
+        document.querySelectorAll('.explanation').forEach(el => {
+            el.style.display = 'block';
+        });
+    };
+    
+    // Initialize immediately
+    (function() {
+        console.log('Quiz script loading...');
+        
+        // Add event listeners
+        setTimeout(function() {
+            const submitBtn = document.getElementById('submit-btn');
+            const explainBtn = document.getElementById('explain-btn');
+            
+            if (submitBtn) {
+                submitBtn.addEventListener('click', window.submitQuiz);
+                console.log('Submit button handler added');
+            } else {
+                console.log('Submit button not found');
+            }
+            
+            if (explainBtn) {
+                explainBtn.addEventListener('click', window.showExplanations);
+                console.log('Explanations button handler added');
+            }
+        }, 100);
+    })();
+    </script>
+    """
+    
+    return html
 
 def study_chat(message: str, history: List[List[str]]) -> Tuple[str, List[List[str]]]:
     """Handle study assistant chat."""
@@ -200,9 +593,17 @@ css = """
     max-width: 800px;
     margin: 0 auto;
     padding: 20px;
-    background: #fff;
+    background: #ffffff;
+    color: #333333;
     border-radius: 8px;
     box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.quiz-container h2 {
+    color: #1976d2;
+    text-align: center;
+    margin-bottom: 30px;
+    font-size: 28px;
 }
 
 .quiz-question {
@@ -211,6 +612,20 @@ css = """
     border: 1px solid #e0e0e0;
     border-radius: 8px;
     background: #fafafa;
+    color: #333333;
+}
+
+.quiz-question h3 {
+    color: #1976d2;
+    margin-bottom: 15px;
+    font-size: 18px;
+}
+
+.quiz-question p {
+    color: #333333;
+    margin-bottom: 15px;
+    font-size: 16px;
+    line-height: 1.5;
 }
 
 .quiz-options {
@@ -218,43 +633,117 @@ css = """
 }
 
 .quiz-option {
+    display: block;
     margin: 10px 0;
-    padding: 10px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
+    padding: 12px 15px;
+    border: 2px solid #e0e0e0;
+    border-radius: 6px;
     cursor: pointer;
-    transition: background-color 0.2s;
+    transition: all 0.2s;
+    background: #ffffff;
+    color: #333333;
 }
 
 .quiz-option:hover {
-    background-color: #f0f0f0;
+    background-color: #f0f8ff;
+    border-color: #1976d2;
 }
 
-.quiz-option.selected {
-    background-color: #e3f2fd;
-    border-color: #2196f3;
+.quiz-option input[type="radio"] {
+    margin-right: 10px;
+}
+
+.quiz-option.correct {
+    background-color: #e8f5e8;
+    border-color: #4caf50;
+    color: #2e7d32;
+}
+
+.quiz-option.wrong {
+    background-color: #ffebee;
+    border-color: #f44336;
+    color: #c62828;
+}
+
+.quiz-option input[type="text"] {
+    width: 100%;
+    padding: 10px;
+    border: 2px solid #e0e0e0;
+    border-radius: 4px;
+    font-size: 16px;
+    color: #333333;
+    background: #ffffff;
+}
+
+.quiz-option input[type="text"]:focus {
+    outline: none;
+    border-color: #1976d2;
+}
+
+.quiz-option input[type="text"].correct {
+    background-color: #e8f5e8;
+    border-color: #4caf50;
+}
+
+.quiz-option input[type="text"].wrong {
+    background-color: #ffebee;
+    border-color: #f44336;
 }
 
 .quiz-submit {
     background: #4caf50;
     color: white;
-    padding: 12px 24px;
+    padding: 15px 30px;
     border: none;
-    border-radius: 4px;
+    border-radius: 6px;
     cursor: pointer;
-    font-size: 16px;
-    margin-top: 20px;
+    font-size: 18px;
+    font-weight: bold;
+    margin-top: 30px;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+    transition: background-color 0.2s;
 }
 
 .quiz-submit:hover {
     background: #45a049;
 }
 
+.quiz-submit:disabled {
+    background: #cccccc;
+    cursor: not-allowed;
+}
+
 .quiz-results {
-    margin-top: 20px;
+    margin-top: 30px;
     padding: 20px;
     background: #f5f5f5;
     border-radius: 8px;
+    color: #333333;
+}
+
+.quiz-results h3 {
+    color: #1976d2;
+    margin-bottom: 15px;
+}
+
+.explanation {
+    margin-top: 15px;
+    padding: 15px;
+    background: #e3f2fd;
+    border-radius: 6px;
+    color: #333333;
+}
+
+.explanation p {
+    margin: 0;
+    font-size: 14px;
+}
+
+.unanswered {
+    border-color: #ff9800 !important;
+    background-color: #fff3e0 !important;
 }
 
 .wrong-answers-review {
@@ -262,6 +751,7 @@ css = """
     max-width: 800px;
     margin: 0 auto;
     padding: 20px;
+    color: #333333;
 }
 
 .wrong-answer-item {
@@ -270,6 +760,12 @@ css = """
     border: 1px solid #e0e0e0;
     border-radius: 8px;
     background: #fafafa;
+    color: #333333;
+}
+
+.wrong-answer-item h3 {
+    color: #1976d2;
+    margin-bottom: 15px;
 }
 
 .wrong {
@@ -290,6 +786,7 @@ css = """
     padding: 20px;
     background: #e3f2fd;
     border-radius: 8px;
+    color: #1976d2;
 }
 """
 
