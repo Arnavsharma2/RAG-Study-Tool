@@ -22,9 +22,21 @@ import pytesseract
 # Load environment variables
 load_dotenv()
 
+# Check for required API key
+if not os.getenv("OPENAI_API_KEY"):
+    print("WARNING: OPENAI_API_KEY not found in environment variables!")
+    print("Please set your OpenAI API key in the .env file")
+    print("Get your API key from: https://platform.openai.com/api-keys")
+
 # Initialize LLM and embeddings
-llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
-embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+try:
+    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+    embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+except Exception as e:
+    print(f"Error initializing OpenAI models: {e}")
+    print("Make sure your OPENAI_API_KEY is set correctly in the .env file")
+    llm = None
+    embeddings = None
 
 # Text splitter configuration
 text_splitter = RecursiveCharacterTextSplitter(
@@ -112,6 +124,10 @@ def load_image(file_path: str) -> List[Document]:
 def process_documents(file_paths: List[str]) -> Optional[Chroma]:
     """Process multiple uploaded files and create a unified vector store."""
     if not file_paths:
+        return None
+    
+    if embeddings is None:
+        print("Error: OpenAI embeddings not initialized. Check your API key.")
         return None
     
     all_documents = []
@@ -206,6 +222,10 @@ def create_retriever_tool(vectorstore: Chroma):
 
 def create_study_agent(vectorstore: Chroma):
     """Create a study assistant agent with strict adherence to uploaded materials."""
+    if llm is None:
+        print("Error: OpenAI LLM not initialized. Check your API key.")
+        return None
+    
     retriever_tool = create_retriever_tool(vectorstore)
     tools = [retriever_tool]
     llm_with_tools = llm.bind_tools(tools)
@@ -282,6 +302,10 @@ def create_study_agent(vectorstore: Chroma):
 
 def create_quiz_agent(vectorstore: Chroma):
     """Create a quiz generation agent."""
+    if llm is None:
+        print("Error: OpenAI LLM not initialized. Check your API key.")
+        return None
+    
     retriever_tool = create_retriever_tool(vectorstore)
     tools = [retriever_tool]
     llm_with_tools = llm.bind_tools(tools)

@@ -32,6 +32,9 @@ def process_uploaded_files(files) -> Tuple[str, str]:
     study_agent = create_study_agent(vectorstore)
     quiz_agent = create_quiz_agent(vectorstore)
     
+    if study_agent is None or quiz_agent is None:
+        return "Error: Could not initialize AI agents.", "Failed to initialize. Please check your OpenAI API key in the .env file."
+    
     file_info = f"Successfully processed {len(file_paths)} file(s):\n"
     for file_path in file_paths:
         file_info += f"• {os.path.basename(file_path)}\n"
@@ -193,6 +196,34 @@ def clear_wrong_answers() -> str:
     wrong_answers = []
     return "Wrong answers cleared."
 
+def submit_quiz_results(results_json: str) -> str:
+    """Process quiz results submitted from the HTML quiz."""
+    global wrong_answers
+    
+    if not results_json or results_json.strip() == "":
+        return "No results to process."
+    
+    try:
+        import json
+        results = json.loads(results_json)
+        
+        # Clear previous wrong answers
+        wrong_answers = []
+        
+        # Process each question result
+        for result in results:
+            if not result.get('correct', True):  # If answer was wrong
+                wrong_answers.append((
+                    result.get('question', 'Unknown question'),
+                    result.get('user_answer', 'No answer'),
+                    result.get('correct_answer', 'Unknown'),
+                    result.get('explanation', 'No explanation provided')
+                ))
+        
+        return f"Quiz submitted! {len(wrong_answers)} wrong answer(s) recorded."
+    except Exception as e:
+        return f"Error processing quiz results: {str(e)}"
+
 # Custom CSS for styling
 css = """
 .quiz-container {
@@ -329,6 +360,16 @@ with gr.Blocks(css=css, title="RAG Study Tool") as app:
             
             gr.Markdown("### Generated Quiz")
             quiz_display = gr.HTML(label="Interactive Quiz")
+            
+            gr.Markdown("### Submit Quiz Results")
+            gr.Markdown("After completing the quiz, paste your results JSON here:")
+            quiz_results_input = gr.Textbox(
+                label="Quiz Results (JSON)",
+                placeholder='Paste quiz results here...',
+                lines=3
+            )
+            submit_results_btn = gr.Button("Submit Results", variant="secondary")
+            results_status = gr.Textbox(label="Submission Status", interactive=False)
         
         # Tab 2: Study Assistant
         with gr.Tab("💬 Study Assistant"):
@@ -344,9 +385,9 @@ with gr.Blocks(css=css, title="RAG Study Tool") as app:
                         pause_btn = gr.Button("Pause/Resume")
                         reset_btn = gr.Button("Reset")
                     
-                    timer_display = gr.Textbox(label="Timer", interactive=False)
-                    timer_status = gr.Textbox(label="Status", interactive=False)
-                    sessions_display = gr.Textbox(label="Sessions", interactive=False)
+                    timer_display = gr.Textbox(label="Timer", interactive=False, value="Time left: 25:00")
+                    timer_status = gr.Textbox(label="Status", interactive=False, value="Ready")
+                    sessions_display = gr.Textbox(label="Sessions", interactive=False, value="Sessions completed: 0")
                 
                 with gr.Column(scale=2):
                     gr.Markdown("### Chat with Study Materials")
@@ -410,6 +451,19 @@ with gr.Blocks(css=css, title="RAG Study Tool") as app:
     clear_btn.click(
         clear_wrong_answers,
         outputs=[wrong_answers_display]
+    )
+    
+    submit_results_btn.click(
+        submit_quiz_results,
+        inputs=[quiz_results_input],
+        outputs=[results_status]
+    )
+    
+    # Auto-update timer every second
+    timer_updater = gr.Timer(value=1)
+    timer_updater.tick(
+        update_timer,
+        outputs=[timer_display, timer_status, sessions_display]
     )
 
 if __name__ == "__main__":
